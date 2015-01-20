@@ -30,13 +30,18 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Stack;
 
 import com.sun.pdfview.colorspace.PDFColorSpace;
 import com.sun.pdfview.colorspace.PatternSpace;
 import com.sun.pdfview.decode.PDFDecoder;
+import com.sun.pdfview.font.BuiltinFont;
 import com.sun.pdfview.font.PDFFont;
+import com.sun.pdfview.font.PDFFontEncoding;
 import com.sun.pdfview.pattern.PDFShader;
 
 /**
@@ -93,7 +98,12 @@ public class PDFParser extends BaseWatchable {
     // ---- result variables
     byte[] stream;
     HashMap<String, PDFObject> resources;
-
+    
+    
+    public static final Set<String> FONTS_THAT_SHOULD_REPLACED = new HashSet<String>(Arrays.asList(new String[]{"T1_0"}));
+    public static final String DEFAULT_REPLACMENT_FONT = "Helvetica";
+   
+    
     private static class DebugStopException extends Exception {
     }
 
@@ -1240,6 +1250,18 @@ public class PDFParser extends BaseWatchable {
     * the resource key for the font
     */
     private PDFFont getFontFrom(String fontref) throws IOException {
+       
+        
+        //Use built in font for some fonts that can make trouble at conversion 
+        if (FONTS_THAT_SHOULD_REPLACED.contains(fontref)) {
+            PDFObject obj = findResource(fontref, "Font");
+
+            BuiltinFont font = new BuiltinFont(DEFAULT_REPLACMENT_FONT, obj);
+            font.setEncoding(new PDFFontEncoding("Type1", obj.getDictRef("Encoding")));
+            
+            return font;
+        }
+        
         PDFObject obj = findResource(fontref, "Font");
         return PDFFont.getFont(obj, this.resources);
     }
